@@ -230,13 +230,13 @@ class SlantedNormalDistribution(Distribution):
         z = np.random.randn(n,self._n_rvs)
         return self._ranges[:, 0] +self._weight*z+np.random.rand(n)*self._ranges[:, 1];
 
-class MVUniformDistribution(object):
+class MVUniformDistribution(Distribution):
     
-    def __init__(self, dim = 6):
+    def __init__(self, dim=6):
         self.dim = dim
                     
-    def sample(self, n = 1):
-        return np.random.mtrand.dirichlet(np.ones(self.dim),n)
+    def sample(self, n=1):
+        return np.random.mtrand.dirichlet(np.ones(self.dim), n)
 
 class DiscreteUniformDistribution(Distribution):
     def __init__(self, num_bits):
@@ -247,8 +247,7 @@ class DiscreteUniformDistribution(Distribution):
         return z
 
 
-# TODO: make the following into Distributions.        
-class HilbertSchmidtUniform(object):
+class HilbertSchmidtUniform(Distribution):
     """
     Creates a new Hilber-Schmidt uniform prior on state space of dimension ``dim``.
     See e.g. [Mez06]_ and [Mis12]_.
@@ -261,7 +260,7 @@ class HilbertSchmidtUniform(object):
         
         self.paulis = self.make_Paulis(self.paulis1Q, 4)
         
-    def sample(self):
+    def sample(self, n=1):
         #Generate random unitary (see e.g. http://arxiv.org/abs/math-ph/0609050v2)        
         g = (np.random.randn(self.dim,self.dim) + 1j*np.random.randn(self.dim,self.dim))/np.sqrt(2.0)
         q,r = la.qr(g)
@@ -294,16 +293,16 @@ class HilbertSchmidtUniform(object):
             return self.make_Paulis(temp,d*2)
             
         
-class HaarUniform(object):
+class HaarUniform(Distribution):
     """
     Creates a new Haar uniform prior on state space of dimension ``dim``.
 
     :param int dim: Dimension of the state space.
     """
-    def __init__(self,dim = 2):
+    def __init__(self, dim=2):
         self.dim = dim
     
-    def sample(self):
+    def sample(self, n=1):
         #Generate random unitary (see e.g. http://arxiv.org/abs/math-ph/0609050v2)        
         z = (np.random.randn(self.dim,self.dim) + 1j*np.random.randn(self.dim,self.dim))/np.sqrt(2.0)
         q,r = la.qr(z)
@@ -323,7 +322,7 @@ class HaarUniform(object):
         
         return np.array([x,y,z])
 
-class GinibreUniform(object):
+class GinibreUniform(Distribution):
     """
     Creates a prior on state space of dimension dim according to the Ginibre
     ensemble with parameter ``k``.
@@ -331,7 +330,7 @@ class GinibreUniform(object):
     
     :param int dim: Dimension of the state space.
     """
-    def __init__(self,dim = 2, k = 2):
+    def __init__(self, dim=2, k=2):
         self.dim = dim
         self.k = k
         
