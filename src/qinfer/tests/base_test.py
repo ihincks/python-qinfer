@@ -365,6 +365,8 @@ def test_model(model, prior, expparams, stream=sys.stderr):
         def instantiate_expparams(self):
             return expparams
     
-    test = unittest.TestSuite((TestGivenModel, ))
+    # put this one test class in a suite and run it
+    test_suite = unittest.TestSuite()
+    test_suite.addTest(unittest.makeSuite(TestGivenModel))
     runner = unittest.TextTestRunner(stream=stream)
-    runner.run(test)
+    runner.run(test_suite)
