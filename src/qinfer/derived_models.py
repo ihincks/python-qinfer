@@ -397,10 +397,8 @@ class ReferencedPoissonModel(DerivedModel):
         for idx_ep, expparam in enumerate(expparams):
             if expparam['mode'] == self.SIGNAL:
                 # Get the probability of outcome 1 for the underlying model.
-                print(self._expparams_scalar)
  
                 ep = np.array([expparam['p']]) if self._expparams_scalar else np.array([expparam])
-                print(ep.shape)
                 pr0 = self.underlying_model.likelihood(
                     np.array([0], dtype='uint'),
                     modelparams[:,:-2],
