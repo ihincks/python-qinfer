@@ -29,6 +29,17 @@ from __future__ import absolute_import
 from __future__ import division # Ensures that a/b is always a float.
 from future.utils import with_metaclass
 
+## ALL ########################################################################
+
+# We use __all__ to restrict what globals are visible to external modules.
+__all__ = [
+    'DerandomizedTestCase',
+    'ConcreteSimulatableTest',
+    'ConcreteModelTest',
+    'ConcreteDifferentiableModelTest',
+    'test_model'
+]
+
 ## IMPORTS ####################################################################
 
 import sys
@@ -36,42 +47,7 @@ import abc
 import numpy as np
 from numpy.testing import assert_equal, assert_almost_equal
 import unittest
-from qinfer import Domain
-
-## FUNCTIONS ##################################################################
-
-def test_model(model, prior, expparams, stream=sys.stderr):
-    """
-    Tests the given Simulatable instance for errors. Useful for debugging 
-    new or third party models.
-
-    :param model: Instance of Simulatable or a subclass thereof.
-    :param prior: Instance of Distribution, or any other class which 
-        implements a function `sample` that returns valid modelparams.
-    :param expparams: `np.ndarray` of experimental parameters to test with.
-    :param stream: Stream to dump the results into, default is stderr.
-    """
-
-    if isinstance(model, DifferentiableModel):
-        test_class = TestConcreteDifferentiableModel
-    elif isinstance(model, Model):
-        test_class = TestConcreteModel
-    elif isinstance(model, Simulatable):
-        test_class = TestConcreteSimulatable
-    else:
-        raise ValueError("Given model has unrecognized type.")
-
-    class TestGivenModel(test_class, DerandomizedTestCase):
-        def instantiate_model(self):
-            return model
-        def instantiate_prior(self):
-            return prior
-        def instantiate_expparams(self):
-            return expparams
-    
-    test = unittest.TestSuite((TestGivenModel, ))
-    runner = unittest.TextTestRunner(stream=stream)
-    runner.run(test)
+from qinfer import Domain, Model, Simulatable, DifferentiableModel
 
 ## CLASSES ####################################################################
 
@@ -358,3 +334,37 @@ class ConcreteDifferentiableModelTest(ConcreteModelTest):
             self.n_expparams)
             )
         
+## FUNCTIONS ##################################################################
+
+def test_model(model, prior, expparams, stream=sys.stderr):
+    """
+    Tests the given Simulatable instance for errors. Useful for debugging 
+    new or third party models.
+
+    :param model: Instance of Simulatable or a subclass thereof.
+    :param prior: Instance of Distribution, or any other class which 
+        implements a function `sample` that returns valid modelparams.
+    :param expparams: `np.ndarray` of experimental parameters to test with.
+    :param stream: Stream to dump the results into, default is stderr.
+    """
+
+    if isinstance(model, DifferentiableModel):
+        test_class = ConcreteDifferentiableModelTest
+    elif isinstance(model, Model):
+        test_class = ConcreteModelTest
+    elif isinstance(model, Simulatable):
+        test_class = ConcreteSimulatableTest
+    else:
+        raise ValueError("Given model has unrecognized type.")
+
+    class TestGivenModel(test_class, DerandomizedTestCase):
+        def instantiate_model(self):
+            return model
+        def instantiate_prior(self):
+            return prior
+        def instantiate_expparams(self):
+            return expparams
+    
+    test = unittest.TestSuite((TestGivenModel, ))
+    runner = unittest.TextTestRunner(stream=stream)
+    runner.run(test)
