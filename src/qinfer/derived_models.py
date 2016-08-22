@@ -256,7 +256,7 @@ class ReferencedPoissonModel(DerivedModel):
     def __init__(self, underlying_model):
         super(ReferencedPoissonModel, self).__init__(underlying_model)
 
-        if not (underlying_model.is_outcomes_constant and underlying_model.domain(None).n_members == 2):
+        if not (underlying_model.is_n_outcomes_constant and underlying_model.domain(None).n_members == 2):
             raise ValueError("Decorated model must be a two-outcome model.")
 
         if isinstance(underlying_model.expparams_dtype, str):

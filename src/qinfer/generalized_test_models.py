@@ -171,7 +171,7 @@ class PoissonModel(DifferentiableModel):
         return self.n_model_function_params   
     
     @property
-    def is_outcomes_constant(self):
+    def is_n_outcomes_constant(self):
         """
         Returns ``True`` if and only if the number of outcomes for each
         experiment is independent of the experiment being performed.
@@ -472,7 +472,7 @@ class GaussianModel(DifferentiableModel):
     
     
     @property
-    def is_outcomes_constant(self):
+    def is_n_outcomes_constant(self):
         """
         Returns ``True`` if and only if the number of outcomes for each
         experiment is independent of the experiment being performed.

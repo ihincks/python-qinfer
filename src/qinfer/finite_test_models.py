@@ -234,7 +234,7 @@ class CoinModel(FiniteOutcomeModel, DifferentiableModel):
         return []
     
     @property
-    def is_outcomes_constant(self):
+    def is_n_outcomes_constant(self):
         """
         Returns ``True`` if and only if the number of outcomes for each
         experiment is independent of the experiment being performed.
