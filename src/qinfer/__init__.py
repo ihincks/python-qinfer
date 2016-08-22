@@ -47,6 +47,7 @@ from qinfer.ipy import *
 from qinfer.simple_est import *
 from qinfer.resamplers import *
 from qinfer.domains import *
+from qinfer.qhl import *
 
 import qinfer.tomography
 
