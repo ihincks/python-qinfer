@@ -157,8 +157,6 @@ _DEFAULT_RANGES = np.array([[0, 1]])
 _DEFAULT_RANGES.flags.writeable = False # Prevent anyone from modifying the
                                         # default ranges.
 
-<<<<<<< HEAD
-=======
 class MixtureDistribution(Distribution):
     r"""
     Samples from a weighted list of distributions.
@@ -259,7 +257,6 @@ class MixtureDistribution(Distribution):
                     ).sample(n=ns[k])
                 for k in idxs
             ])
->>>>>>> 097c395... Added tests for MixtureDistributions while fixing bugs
 
 ## CLASSES ###################################################################
 
