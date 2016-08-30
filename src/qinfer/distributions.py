@@ -51,6 +51,7 @@ __all__ = [
     'Distribution',
     'SingleSampleMixin',
     'ProductDistribution',
+    'MixtureDistribution',
     'UniformDistribution',
     'ConstantDistribution',
     'NormalDistribution',
