@@ -47,7 +47,7 @@ import numpy as np
 
 # from itertools import zip
 
-from scipy.spatial import Delaunay
+from scipy.spatial import ConvexHull, Delaunay
 import scipy.linalg as la
 import scipy.stats
 import scipy.interpolate
@@ -823,7 +823,7 @@ class SMCUpdater(Distribution):
 
     ## REGION ESTIMATION METHODS ##############################################
 
-    def est_credible_region(self, level=0.95, return_outside=False):
+    def est_credible_region(self, level=0.95, return_outside=False, param_slice=np.s_[:]):
         """
         Returns an array containing particles inside a credible region of a
         given level, such that the described region has probability mass
@@ -836,11 +836,20 @@ class SMCUpdater(Distribution):
         :param bool return_outside: If `True`, the return value is a tuple
             of the those particles within the credible region, and the rest
             of the posterior particle cloud.
+        :param slice param_slice: A slice describing which model parameters 
+            to consider in the credible region, effectively marginizing out the
+            remaining parameters. By default, all model parameters are included.
 
-        :rtype: :class:`numpy.ndarray`, shape ``(n_credible, n_modelparams)``,
+        :rtype: :class:`numpy.ndarray`, shape ``(n_credible, n_mps)``,
             where ``n_credible`` is the number of particles in the credible
-            region
-        :returns: An array of particles inside the estimated credible region.
+            region and ``n_mps`` corresponds to the size of ``param_slice``.
+             If ``return_outside`` is ``True``, this method instead 
+             returns tuple ``(inside, outside)`` where ``inside`` is as 
+             described above, and ``outside`` has shape ``(n_particles-n_credible, n_mps)``.
+
+        :return: An array of particles inside the estimated credible region. Or,
+            if ``return_outside`` is ``True``, both the particles inside and the
+            particles outside, as a tuple.
         """
         
         # Start by sorting the particles by weight.
@@ -864,34 +873,53 @@ class SMCUpdater(Distribution):
         # credible particles.
         if return_outside:
             return (
-                self.particle_locations[id_sort][id_cred], 
-                self.particle_locations[id_sort][np.logical_not(id_cred)] 
+                self.particle_locations[id_sort, param_slice][id_cred], 
+                self.particle_locations[id_sort, param_slice][np.logical_not(id_cred)] 
             )
         else:
-            return self.particle_locations[id_sort][id_cred]
+            return self.particle_locations[id_sort, param_slice][id_cred]
     
-    def region_est_hull(self, level=0.95):
+    def region_est_hull(self, level=0.95, return_qhull=False, param_slice=np.s_[:]):
         """
         Estimates a credible region over models by taking the convex hull of
         a credible subset of particles.
         
         :param float level: The desired crediblity level (see
             :meth:`SMCUpdater.est_credible_region`).
+        :param bool return_qhull: If true, the ``scipy.special.QHull`` 
+            object describing the convex hull is returned 
+            (in addition to the faces and vertices).
+        :param slice param_slice: A slice describing which model parameters 
+            to consider in the credible region, effectively marginizing out the
+            remaining parameters. By default, all model parameters are included.
+
+        :return: The tuple ``(faces, vertices)`` if ``return_qhull`` is 
+            ``False``, or the tuple ``(faces, vertices, qhull)`` if 
+            ``return_hull`` is ``True``. ``faces`` describes all the 
+            vertices of all of the faces on the exterior of the convex hull.
+            ``vertices`` is a list of all vertices on the exterior of the 
+            convex hull.
+        :rtype: ``faces`` is a ``numpy.ndarray`` of with shape 
+            ``(n_face, n_mps, n_mps)`` and indeces ``(idx_face, idx_vertex, idx_mps)`` 
+            where ``n_mps`` corresponds to the size of ``param_slice``.
+            ``vertices`` is an  ``numpy.ndarray`` of shape ``(n_vertices, n_mps)``.
+            ``qhull`` is a ``scipy.spacial.Qhull`` object.
         """
-        # TODO: document return values.
-        points = self.est_credible_region(level = level)
-        tri = Delaunay(points)
-        faces = []
-        hull = tri.convex_hull
-        
-        for ia, ib, ic in hull:
-            faces.append(points[[ia, ib, ic]])    
 
-        vertices = points[uniquify(hull.flatten())]
+        points = self.est_credible_region(level=level, param_slice=param_slice)
+        chull = ConvexHull(points)
+        vertices = points[chull.vertices,:]
+        faces = np.concatenate([
+            points[face][np.newaxis,...]
+            for face in chull.simplices
+        ], axis=0)
         
-        return faces, vertices
+        if return_qhull:
+            return faces, vertices, chull
+        else:
+            return faces, vertices
 
-    def region_est_ellipsoid(self, level=0.95, tol=0.0001):
+    def region_est_ellipsoid(self, level=0.95, tol=0.0001, param_slice=np.s_[:]):
         """
         Estimates a credible region over models by finding the minimum volume
         enclosing ellipse (MVEE) of a credible subset of particles.
@@ -901,12 +929,69 @@ class SMCUpdater(Distribution):
             :meth:`SMCUpdater.est_credible_region`).
         :param float tol: The allowed error tolerance in the MVEE optimization
             (see :meth:`~qinfer.utils.mvee`).
+        :param slice param_slice: A slice describing which model parameters 
+            to consider in the credible region, effectively marginizing out the
+            remaining parameters. By default, all model parameters are included.
+
+        :return: A tuple ``(A, c)`` where ``A`` is the covariance 
+            matrix of the ellipsoid and ``c`` is the center.
+            A point :math:`\vec{x}` is in the ellipsoid whenever 
+            :math:`(\vec{x}-\vec{c})^{T}A^{-1}(\vec{x}-\vec{c})\leq 1`.
+        :rtype: ``A`` is ``np.ndarray`` of shape ``(n_mps,n_mps)`` and 
+            ``centroid`` is ``np.ndarray`` of shape ``(n_mps)``. 
+            ``n_mps`` corresponds to the size of ``param_slice``.
         """
-        # TODO: document return values.
-        faces, vertices = self.region_est_hull(level=level)
+        _, vertices = self.region_est_hull(level=level, param_slice=param_slice)
                 
-        A, centroid = mvee(vertices, tol)
-        return A, centroid
+        A, c = mvee(vertices, tol)
+        return A, c
+
+    def in_credible_region(self, points, level=0.95, param_slice=np.s_[:], tol=None):
+        """
+        Decides whether each of the points lie within a credible region defined 
+        by the convex hull of a credible subset of particles, see 
+        :meth:`SMCUpdater.est_credible_region`.
+
+        If ``tol`` is ``None``, the particles are tested directly against 
+        the convex hull object. If ``tol`` is a positive ``float``, 
+        particles are tested to be in the interior of the smallest 
+        enclosing ellipsoid of this convex hull, see 
+        :meth:`SMCUpdater.region_est_ellipsoid`.
+
+        :param np.ndarray points: An ``np.ndarray`` of shape ``(n_points, n_mps)`` 
+            where ``n_mps`` corresponds to the same dimensionality as ``param_slice``.
+        :param float level: The desired crediblity level (see
+            :meth:`SMCUpdater.est_credible_region`).
+        :param float tol: The allowed error tolerance in the MVEE optimization
+            (see :meth:`~qinfer.utils.mvee` and ). Defaults to ``None``.
+        :param slice param_slice: A slice describing which model parameters 
+            to consider in the credible region, effectively marginizing out the
+            remaining parameters. By default, all model parameters are included.
+
+        :return: A boolean array of shape ``(n_points)`` specifying whether 
+            each of the points lies inside the confidence region.
+        """
+        pts = points
+        if points.ndim == 1:
+            pts = pts[np.newaxis, :]
+        
+        if tol is None:          
+            # this fills the convex hull with (n_mps+1)-dimensional
+            # simplices; the convex hull is an almost-everywhere 
+            # disjoint union of these simplices
+            hull = Delaunay(self.est_credible_region(level=level, param_slice=param_slice))
+
+            # now we just check whether each of the given points are in 
+            # any of the simplices. (http://stackoverflow.com/a/16898636/1082565)
+            results =  hull.find_simplex(pts) >= 0
+            
+        else:
+            A, c = self.region_est_ellipsoid(level=level, tol=tol, param_slice=param_slice)
+
+            x = c[np.newaxis,:] - pts
+            results = np.einsum('ij,jl,il->i', x, np.linalg.inv(A), x) <= 1
+
+        return results if points.ndim > 1 else results.flatten()
         
     ## MISC METHODS ###########################################################
     
