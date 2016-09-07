@@ -958,7 +958,8 @@ class SMCUpdater(Distribution):
         enclosing ellipsoid of this convex hull, see 
         :meth:`SMCUpdater.region_est_ellipsoid`.
 
-        :param np.ndarray points: An ``np.ndarray`` of shape ``(n_points, n_mps)`` 
+        :param np.ndarray points: An ``np.ndarray`` of shape ``(n_nps)`` for 
+        a single point, or of shape ``(n_points, n_mps)`` for multiple points,
             where ``n_mps`` corresponds to the same dimensionality as ``param_slice``.
         :param float level: The desired crediblity level (see
             :meth:`SMCUpdater.est_credible_region`).
