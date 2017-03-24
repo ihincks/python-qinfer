@@ -145,7 +145,7 @@ class SMCUpdater(Distribution):
             self.resampler = qinfer.resamplers.LiuWestResampler(a=resample_a)
         else:
             if resampler is None:
-                self.resampler = qinfer.resamplers.LiuWestResampler()
+                self.resampler = qinfer.resamplers.LiuWestResampler(default_n_particles=n_particles)
             else:
                 self.resampler = resampler
 
@@ -1613,4 +1613,63 @@ class SMCUpdaterBCRB(SMCUpdater):
         
         # We now can update as normal.
         SMCUpdater.update(self, outcome, expparams,check_for_resample=check_for_resample)
+        
+class ModelReparameterization(object):
+    r"""
+    The paradigm of reparameterizations is that the model has
+    model parameters which are naturally parameterized (due to physics,
+    probability theory, etc), but for which there exists a computationally nicer 
+    parameterization (less correlation between parameters, more 
+    gaussian in shape, no hard cutoffs to the region, etc).
+    
+    This class provides a reparameterization function, its 
+    inverse, and its jacobian (needed to modify the likelihood).
+    
+    """
+    def __init__(self, to_natural, from_natural, to_natural_jac, do_str_hash=True):
+        super(ReparameterizedModel, self).__init__(underlying_model)
+        self._to_natural = to_natural
+        self._from_natural = from_natural
+        self._to_natural_jac = to_natural_jac
+    
+    def to_natural(self, modelparams):
+        """
+        Converts the given model parameters from the unnatural parameterization
+        to the natural parameterization.
+        
+        :param np.ndarray modelparams: A shape ``(n_models, n_modelparams)``
+            array of model parameters in the unnatural parameterization.
+            
+        :rtype: np.ndarray
+        :return: An array of the same shape as the input but in the 
+             natural parameterization.
+        """
+        return self._to_natural(modelparams)
+        
+    def from_natural(self, modelparams):
+        """
+        Converts the given model parameters from the natural parameterization
+        to the unnatural parameterization.
+        
+        :param np.ndarray modelparams: A shape ``(n_models, n_modelparams)``
+            array of model parameters in the natural parameterization.
+            
+        :rtype: np.ndarray
+        :return: An array of the same shape as the input but in the 
+             unnatural parameterization.
+        """
+        return self._from_natural(modelparams)    
+        
+    def to_natural_jac(self, modelparams):
+        """
+        The jacobian of ``to_natural`` at the given model parameters.
+        
+        :param np.ndarray modelparams: A shape ``(n_models, n_modelparams)``
+            array of model parameters in the unnatural parameterization.
+            
+        :rtype: np.ndarray
+        :return: A shape ``(n_models, n_modelparams, n_modelparams)``
+            array.
+        """
+        return self._to_natural_jac(modelparams)
         
